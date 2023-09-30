@@ -61,7 +61,7 @@ resource "random_integer" "zone" {
 }
 
 locals {
-  random_zones    = { for idx, vm in var.vms : vm.name => vm.availability_zone == "random" ? tostring(idx + 1) : vm.availability_zone }
+  random_zones = { for idx, vm in var.vms : vm.name => vm.availability_zone == "random" ? tostring(idx + 1) : vm.availability_zone }
 }
 
 resource "azurerm_linux_virtual_machine" "this" {
@@ -73,29 +73,29 @@ resource "azurerm_linux_virtual_machine" "this" {
     azurerm_marketplace_agreement.plan_acceptance_custom
   ]
 
-  name                         = each.value.name
-  resource_group_name          = each.value.rg_name
-  location                     = each.value.location
-  network_interface_ids        = [azurerm_network_interface.nic[each.key].id]
-  license_type                 = each.value.license_type
-  computer_name                = each.value.computer_name != null ? each.value.computer_name : each.value.name
-  admin_username               = each.value.admin_username
-  admin_password               = each.value.admin_password
+  name                            = each.value.name
+  resource_group_name             = each.value.rg_name
+  location                        = each.value.location
+  network_interface_ids           = [azurerm_network_interface.nic[each.key].id]
+  license_type                    = each.value.license_type
+  computer_name                   = each.value.computer_name != null ? each.value.computer_name : each.value.name
+  admin_username                  = each.value.admin_username
+  admin_password                  = each.value.admin_password
   disable_password_authentication = each.value.disable_password_authentication
-  size                         = each.value.vm_size
-  source_image_id              = try(each.value.use_custom_image, null) == true ? each.value.custom_source_image_id : null
-  zone                         = local.random_zones[each.key]
-  edge_zone                    = each.value.edge_zone
-  secure_boot_enabled          = each.value.secure_boot_enabled
-  availability_set_id          = each.value.availability_set_id
-  user_data                    = each.value.user_data
-  custom_data                  = each.value.custom_data
-  patch_mode                   = each.value.patch_mode
-  dedicated_host_group_id      = each.value.dedicated_host_group_id
-  platform_fault_domain        = each.value.platform_fault_domain != null && each.value.virtual_machine_scale_set_id != null ? each.value.platform_fault_domain : null
-  virtual_machine_scale_set_id = each.value.platform_fault_domain != null && each.value.virtual_machine_scale_set_id != null ? each.value.virtual_machine_scale_set_id : null
-  reboot_setting               = each.value.patch_mode == "AutomaticByPlatform" ? each.value.reboot_setting : null
-  tags                         = each.value.tags
+  size                            = each.value.vm_size
+  source_image_id                 = try(each.value.use_custom_image, null) == true ? each.value.custom_source_image_id : null
+  zone                            = local.random_zones[each.key]
+  edge_zone                       = each.value.edge_zone
+  secure_boot_enabled             = each.value.secure_boot_enabled
+  availability_set_id             = each.value.availability_set_id
+  user_data                       = each.value.user_data
+  custom_data                     = each.value.custom_data
+  patch_mode                      = each.value.patch_mode
+  dedicated_host_group_id         = each.value.dedicated_host_group_id
+  platform_fault_domain           = each.value.platform_fault_domain != null && each.value.virtual_machine_scale_set_id != null ? each.value.platform_fault_domain : null
+  virtual_machine_scale_set_id    = each.value.platform_fault_domain != null && each.value.virtual_machine_scale_set_id != null ? each.value.virtual_machine_scale_set_id : null
+  reboot_setting                  = each.value.patch_mode == "AutomaticByPlatform" ? each.value.reboot_setting : null
+  tags                            = each.value.tags
 
   encryption_at_host_enabled = each.value.enable_encryption_at_host
   allow_extension_operations = each.value.allow_extension_operations
@@ -109,12 +109,12 @@ resource "azurerm_linux_virtual_machine" "this" {
   }
 
   dynamic "admin_ssh_key" {
-  for_each = each.value.admin_ssh_key != null ? each.value.admin_ssh_key : []
-  content {
-    username   = admin_ssh_key.value.username
-    public_key = admin_ssh_key.value.public_key
+    for_each = each.value.admin_ssh_key != null ? each.value.admin_ssh_key : []
+    content {
+      username   = admin_ssh_key.value.username
+      public_key = admin_ssh_key.value.public_key
+    }
   }
-}
 
 
   # Use simple image
@@ -227,14 +227,14 @@ resource "azurerm_linux_virtual_machine" "this" {
   }
 
   dynamic "gallery_application" {
-  for_each = each.value.gallery_application != null ? [each.value.gallery_application] : []
-  content {
-    version_id            = gallery_application.value.version_id
-    configuration_blob_uri = gallery_application.value.configuration_blob_uri
-    order                 = gallery_application.value.order
-    tag                   = gallery_application.value.tag
+    for_each = each.value.gallery_application != null ? [each.value.gallery_application] : []
+    content {
+      version_id             = gallery_application.value.version_id
+      configuration_blob_uri = gallery_application.value.configuration_blob_uri
+      order                  = gallery_application.value.order
+      tag                    = gallery_application.value.tag
+    }
   }
-}
 
 
   dynamic "secret" {
@@ -245,7 +245,7 @@ resource "azurerm_linux_virtual_machine" "this" {
       dynamic "certificate" {
         for_each = secret.value.certificates
         content {
-          url   = certificate.value.url
+          url = certificate.value.url
         }
       }
     }
