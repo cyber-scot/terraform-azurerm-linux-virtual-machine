@@ -102,8 +102,8 @@ module "linux-vm" {
       }
       admin_ssh_key = [
         {
-          username = "Local${title(var.short)}${title(var.env)}Admin"
-          public_key  = data.azurerm_ssh_public_key.ssh.public_key
+          username   = "Local${title(var.short)}${title(var.env)}Admin"
+          public_key = data.azurerm_ssh_public_key.ssh.public_key
         }
       ]
       run_vm_command = {
