@@ -61,8 +61,6 @@ resource "random_integer" "zone" {
 }
 
 locals {
-  sanitized_names = { for vm in var.vms : vm.name => upper(replace(replace(replace(vm.name, " ", ""), "-", ""), "_", "")) }
-  netbios_names   = { for key, value in local.sanitized_names : key => substr(value, 0, min(length(value), 15)) }
   random_zones    = { for idx, vm in var.vms : vm.name => vm.availability_zone == "random" ? tostring(idx + 1) : vm.availability_zone }
 }
 
@@ -80,19 +78,23 @@ resource "azurerm_linux_virtual_machine" "this" {
   location                     = each.value.location
   network_interface_ids        = [azurerm_network_interface.nic[each.key].id]
   license_type                 = each.value.license_type
-  patch_mode                   = each.value.patch_mode
-  enable_automatic_updates     = each.value.enable_automatic_updates
-  computer_name                = each.value.computer_name != null ? each.value.computer_name : local.netbios_names[each.key]
+  computer_name                = each.value.computer_name != null ? each.value.computer_name : each.value.name
   admin_username               = each.value.admin_username
   admin_password               = each.value.admin_password
+  disable_password_authentication = each.value.disable_password_authentication
   size                         = each.value.vm_size
   source_image_id              = try(each.value.use_custom_image, null) == true ? each.value.custom_source_image_id : null
   zone                         = local.random_zones[each.key]
+  edge_zone                    = each.value.edge_zone
+  secure_boot_enabled          = each.value.secure_boot_enabled
   availability_set_id          = each.value.availability_set_id
-  virtual_machine_scale_set_id = each.value.virtual_machine_scale_set_id
-  timezone                     = each.value.timezone
   user_data                    = each.value.user_data
   custom_data                  = each.value.custom_data
+  patch_mode                   = each.value.patch_mode
+  dedicated_host_group_id      = each.value.dedicated_host_group_id
+  platform_fault_domain        = each.value.platform_fault_domain != null && each.value.virtual_machine_scale_set_id != null ? each.value.platform_fault_domain : null
+  virtual_machine_scale_set_id = each.value.platform_fault_domain != null && each.value.virtual_machine_scale_set_id != null ? each.value.virtual_machine_scale_set_id : null
+  reboot_setting               = each.value.patch_mode == "AutomaticByPlatform" ? each.value.reboot_setting : null
   tags                         = each.value.tags
 
   encryption_at_host_enabled = each.value.enable_encryption_at_host
@@ -107,12 +109,13 @@ resource "azurerm_linux_virtual_machine" "this" {
   }
 
   dynamic "admin_ssh_key" {
-    for_each = var.admin_ssh_keys
-    content {
-      username   = admin_ssh_key.value["username"]
-      public_key = admin_ssh_key.value["public_key"]
-    }
+  for_each = each.value.admin_ssh_key != null ? each.value.admin_ssh_key : []
+  content {
+    username   = admin_ssh_key.value.username
+    public_key = admin_ssh_key.value.public_key
   }
+}
+
 
   # Use simple image
   dynamic "source_image_reference" {
@@ -124,7 +127,6 @@ resource "azurerm_linux_virtual_machine" "this" {
       version   = coalesce(each.value.vm_os_version, "latest")
     }
   }
-
 
   # Use custom image reference
   dynamic "source_image_reference" {
@@ -224,14 +226,16 @@ resource "azurerm_linux_virtual_machine" "this" {
     }
   }
 
-
-  dynamic "additional_unattend_content" {
-    for_each = each.value.additional_unattend_content != null ? each.value.additional_unattend_content : []
-    content {
-      content = additional_unattend_content.value.content
-      setting = additional_unattend_content.value.setting
-    }
+  dynamic "gallery_application" {
+  for_each = each.value.gallery_application != null ? [each.value.gallery_application] : []
+  content {
+    version_id            = gallery_application.value.version_id
+    configuration_blob_uri = gallery_application.value.configuration_blob_uri
+    order                 = gallery_application.value.order
+    tag                   = gallery_application.value.tag
   }
+}
+
 
   dynamic "secret" {
     for_each = each.value.secrets != null ? each.value.secrets : []
@@ -241,7 +245,6 @@ resource "azurerm_linux_virtual_machine" "this" {
       dynamic "certificate" {
         for_each = secret.value.certificates
         content {
-          store = certificate.value.store
           url   = certificate.value.url
         }
       }
@@ -253,14 +256,6 @@ resource "azurerm_linux_virtual_machine" "this" {
     content {
       enabled = termination_notification.value.enabled
       timeout = lookup(termination_notification.value, "timeout", "PT5M")
-    }
-  }
-
-  dynamic "winrm_listener" {
-    for_each = each.value.winrm_listener != null ? each.value.winrm_listener : []
-    content {
-      protocol        = winrm_listener.value.protocol
-      certificate_url = winrm_listener.value.certificate_url
     }
   }
 }
@@ -300,11 +295,11 @@ resource "azurerm_virtual_machine_extension" "linux_vm_inline_command" {
   name                       = each.value.run_vm_command.extension_name != null ? each.value.run_vm_command.extension_name : "run-command-${each.value.name}"
   publisher                  = "Microsoft.CPlat.Core"
   type                       = "RunCommandLinux"
-  type_handler_version       = "1.1"
+  type_handler_version       = "1.0"
   auto_upgrade_minor_version = true
 
-  settings = jsonencode({
-    script = tolist([each.value.run_vm_command.inline])
+  protected_settings = jsonencode({
+    commandToExecute = tostring(each.value.run_vm_command.inline)
   })
 
   tags               = each.value.tags
@@ -322,11 +317,11 @@ resource "azurerm_virtual_machine_extension" "linux_vm_file_command" {
   name                       = each.value.run_vm_command.extension_name != null ? each.value.run_vm_command.extension_name : "run-command-file-${each.value.name}"
   publisher                  = "Microsoft.CPlat.Core"
   type                       = "RunCommandLinux"
-  type_handler_version       = "1.1"
+  type_handler_version       = "1.0"
   auto_upgrade_minor_version = true
 
-  settings = jsonencode({
-    script = compact(tolist([each.value.run_vm_command.script_file]))
+  protected_settings = jsonencode({
+    script = base64encode(each.value.run_vm_command.script_file)
   })
 
   tags               = each.value.tags
@@ -344,10 +339,10 @@ resource "azurerm_virtual_machine_extension" "linux_vm_uri_command" {
   name                       = each.value.run_vm_command.extension_name != null ? each.value.run_vm_command.extension_name : "run-command-uri-${each.value.name}"
   publisher                  = "Microsoft.CPlat.Core"
   type                       = "RunCommandLinux"
-  type_handler_version       = "1.1"
+  type_handler_version       = "1.0"
   auto_upgrade_minor_version = true
 
-  settings = jsonencode({
+  protected_settings = jsonencode({
     script = compact(tolist([each.value.run_vm_command.script_uri]))
   })
 
