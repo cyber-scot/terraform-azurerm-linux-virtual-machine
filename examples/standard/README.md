@@ -51,21 +51,21 @@ module "nsg" {
   }
 }
 
-#module "bastion" {
-#  source = "cyber-scot/bastion/azurerm"
-#
-#  rg_name  = module.rg.rg_name
-#  location = module.rg.rg_location
-#  tags     = module.rg.rg_tags
-#
-#  bastion_host_name                  = "bst-${var.short}-${var.loc}-${var.env}-01"
-#  create_bastion_nsg                 = true
-#  create_bastion_nsg_rules           = true
-#  create_bastion_subnet              = true
-#  bastion_subnet_target_vnet_name    = module.network.vnet_name
-#  bastion_subnet_target_vnet_rg_name = module.network.vnet_rg_name
-#  bastion_subnet_range               = "10.0.1.0/27"
-#}
+module "bastion" {
+  source = "cyber-scot/bastion/azurerm"
+
+  rg_name  = module.rg.rg_name
+  location = module.rg.rg_location
+  tags     = module.rg.rg_tags
+
+  bastion_host_name                  = "bst-${var.short}-${var.loc}-${var.env}-01"
+  create_bastion_nsg                 = true
+  create_bastion_nsg_rules           = true
+  create_bastion_subnet              = true
+  bastion_subnet_target_vnet_name    = module.network.vnet_name
+  bastion_subnet_target_vnet_rg_name = module.network.vnet_rg_name
+  bastion_subnet_range               = "10.0.1.0/27"
+}
 
 
 resource "azurerm_application_security_group" "server_asg" {
@@ -82,7 +82,7 @@ data "azurerm_ssh_public_key" "ssh" {
 }
 
 module "linux-vm" {
-  source = "../../"
+  source = "cyber-scot/linux-virtual-machine/azurerm"
 
   vms = [
     {
@@ -129,7 +129,8 @@ No requirements.
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_linux-vm"></a> [linux-vm](#module\_linux-vm) | ../../ | n/a |
+| <a name="module_bastion"></a> [bastion](#module\_bastion) | cyber-scot/bastion/azurerm | n/a |
+| <a name="module_linux-vm"></a> [linux-vm](#module\_linux-vm) | cyber-scot/linux-virtual-machine/azurerm | n/a |
 | <a name="module_network"></a> [network](#module\_network) | cyber-scot/network/azurerm | n/a |
 | <a name="module_nsg"></a> [nsg](#module\_nsg) | cyber-scot/nsg/azurerm | n/a |
 | <a name="module_rg"></a> [rg](#module\_rg) | cyber-scot/rg/azurerm | n/a |
