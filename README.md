@@ -176,14 +176,14 @@ resource "azurerm_linux_virtual_machine" "this" {
   }
 
   dynamic "identity" {
-    for_each = try(length(each.value.identity_ids) > 0 && each.value.identity_type == "SystemAssigned", false) ? [each.value.identity_type] : []
+    for_each =  each.value.identity_type == "SystemAssigned" ? [each.value.identity_type] : []
     content {
       type = each.value.identity_type
     }
   }
 
   dynamic "identity" {
-    for_each = try(length(each.value.identity_ids), 0) > 0 || each.value.identity_type == "SystemAssigned, UserAssigned" ? [each.value.identity_type] : []
+    for_each = try(length(each.value.identity_ids), 0) > 0 || each.value.identity_type == "UserAssigned" ? [each.value.identity_type] : []
     content {
       type         = each.value.identity_type
       identity_ids = try(each.value.identity_ids, [])
