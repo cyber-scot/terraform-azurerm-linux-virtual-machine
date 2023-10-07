@@ -173,29 +173,6 @@ resource "azurerm_linux_virtual_machine" "this" {
     }
   }
 
-  dynamic "identity" {
-    for_each = each.value.identity_type == "SystemAssigned" ? [each.value.identity_type] : []
-    content {
-      type = each.value.identity_type
-    }
-  }
-
-  dynamic "identity" {
-    for_each = try(length(each.value.identity_ids), 0) > 0 || each.value.identity_type == "UserAssigned" ? [each.value.identity_type] : []
-    content {
-      type         = each.value.identity_type
-      identity_ids = try(each.value.identity_ids, [])
-    }
-  }
-
-
-  dynamic "identity" {
-    for_each = try(length(each.value.identity_ids), 0) > 0 || each.value.identity_type == "SystemAssigned, UserAssigned" ? [each.value.identity_type] : []
-    content {
-      type         = each.value.identity_type
-      identity_ids = length(try(each.value.identity_ids, [])) > 0 ? each.value.identity_ids : []
-    }
-  }
 
   priority        = try(each.value.spot_instance, false) ? "Spot" : "Regular"
   max_bid_price   = try(each.value.spot_instance, false) ? each.value.spot_instance_max_bid_price : null
@@ -210,6 +187,29 @@ resource "azurerm_linux_virtual_machine" "this" {
     secure_vm_disk_encryption_set_id = each.value.os_disk.secure_vm_disk_encryption_set_id
     security_encryption_type         = each.value.os_disk.security_encryption_type
     write_accelerator_enabled        = each.value.os_disk.write_accelerator_enabled
+
+    dynamic "identity" {
+      for_each = each.value.identity_type == "SystemAssigned" ? [each.value.identity_type] : []
+      content {
+        type = each.value.identity_type
+      }
+    }
+
+    dynamic "identity" {
+      for_each = each.value.identity_type == "SystemAssigned, UserAssigned" ? [each.value.identity_type] : []
+      content {
+        type         = each.value.identity_type
+        identity_ids = try(each.value.identity_ids, [])
+      }
+    }
+
+    dynamic "identity" {
+      for_each = each.value.identity_type == "UserAssigned" ? [each.value.identity_type] : []
+      content {
+        type         = each.value.identity_type
+        identity_ids = length(try(each.value.identity_ids, [])) > 0 ? each.value.identity_ids : []
+      }
+    }
 
     dynamic "diff_disk_settings" {
       for_each = each.value.os_disk.diff_disk_settings != null ? [each.value.os_disk.diff_disk_settings] : []
