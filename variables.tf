@@ -1,13 +1,13 @@
-variable "linux_vms" {
+variable "vms" {
   description = "List of VM configurations."
   type = list(object({
-    accept_plan = optional(bool, false)
-    additional_unattend_content = optional(list(object({
-      content = string
-      setting = string
+    accept_plan    = optional(bool, false)
+    admin_password = string
+    admin_username = string
+    admin_ssh_key = optional(list(object({
+      username   = optional(string)
+      public_key = optional(string)
     })))
-    admin_password                       = string
-    admin_username                       = string
     allocation_method                    = optional(string, "Static")
     allow_extension_operations           = optional(bool, true)
     asg_id                               = optional(string, null)
@@ -18,24 +18,36 @@ variable "linux_vms" {
     secrets = optional(list(object({
       key_vault_id = string
       certificates = list(object({
-        store = string
-        url   = string
+        url = string
       }))
     })))
-    computer_name                 = optional(string)
-    create_asg                    = optional(bool, true)
-    custom_data                   = optional(string)
-    custom_source_image_id        = optional(string, null)
-    enable_accelerated_networking = optional(bool, false)
-    enable_automatic_updates      = optional(bool, true)
-    enable_encryption_at_host     = optional(bool, false)
-    identity_ids                  = optional(list(string))
-    identity_type                 = optional(string)
-    license_type                  = optional(string)
-    location                      = string
-    name                          = string
-    nic_ipconfig_name             = optional(string)
-    nic_name                      = optional(string, null)
+    computer_name                   = optional(string)
+    create_asg                      = optional(bool, true)
+    custom_data                     = optional(string)
+    custom_source_image_id          = optional(string, null)
+    dedicated_host_group_id         = optional(string, null)
+    disable_password_authentication = optional(bool, true)
+    edge_zone                       = optional(string, null)
+    platform_fault_domain           = optional(string, "-1")
+    patch_mode                      = optional(string, "ImageDefault")
+    enable_accelerated_networking   = optional(bool, false)
+    enable_encryption_at_host       = optional(bool, false)
+    secure_boot_enabled             = optional(bool, true)
+    reboot_setting                  = optional(string, "Always")
+    patch_assessment_mode           = optional(string, "ImageDefault")
+    gallery_application = optional(list(object({
+      version_id             = optional(string)
+      configuration_blob_uri = optional(string)
+      order                  = optional(string)
+      tag                    = optional(string)
+    })))
+    identity_ids      = optional(list(string))
+    identity_type     = optional(string)
+    license_type      = optional(string)
+    location          = string
+    name              = string
+    nic_ipconfig_name = optional(string)
+    nic_name          = optional(string, null)
     os_disk = object({
       caching      = optional(string, "ReadWrite")
       os_disk_type = optional(string, "StandardSSD_LRS")
@@ -49,7 +61,6 @@ variable "linux_vms" {
       security_encryption_type         = optional(string, null)
       write_accelerator_enabled        = optional(bool, false)
     })
-    patch_mode                    = optional(string, "AutomaticByOS")
     pip_custom_dns_label          = optional(string)
     pip_name                      = optional(string)
     provision_vm_agent            = optional(bool, true)
@@ -72,7 +83,6 @@ variable "linux_vms" {
       script_file    = optional(string)
       script_uri     = optional(string)
     }))
-    timezone                     = optional(string)
     ultra_ssd_enabled            = optional(bool, false)
     use_custom_image             = optional(bool, false)
     use_custom_image_with_plan   = optional(bool, false)
@@ -88,10 +98,6 @@ variable "linux_vms" {
     vm_os_version                = optional(string)
     vm_size                      = string
     vtpm_enabled                 = optional(bool, false)
-    winrm_listener = optional(list(object({
-      protocol        = string
-      certificate_url = optional(string)
-    })))
   }))
   default = []
 }
