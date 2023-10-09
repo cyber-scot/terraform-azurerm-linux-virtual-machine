@@ -1,5 +1,5 @@
 resource "azurerm_public_ip" "pip" {
-  for_each = { for vm in var.vms : vm.name => vm if vm.public_ip_sku != null }
+  for_each = { for vm in var.linux_vms : vm.name => vm if vm.public_ip_sku != null }
 
   name                = each.value.pip_name != null ? each.value.pip_name : "pip-${each.value.name}"
   location            = each.value.location
@@ -14,7 +14,7 @@ resource "azurerm_public_ip" "pip" {
 }
 
 resource "azurerm_network_interface" "nic" {
-  for_each = { for vm in var.vms : vm.name => vm }
+  for_each = { for vm in var.linux_vms : vm.name => vm }
 
   name                          = each.value.nic_name != null ? each.value.nic_name : "nic-${each.value.name}"
   location                      = each.value.location
@@ -38,7 +38,7 @@ resource "azurerm_network_interface" "nic" {
 }
 
 resource "azurerm_application_security_group" "asg" {
-  for_each = { for vm in var.vms : vm.name => vm if vm.create_asg == true }
+  for_each = { for vm in var.linux_vms : vm.name => vm if vm.create_asg == true }
 
   name                = each.value.asg_name != null ? each.value.asg_name : "asg-${each.value.name}"
   location            = each.value.location
@@ -47,7 +47,7 @@ resource "azurerm_application_security_group" "asg" {
 }
 
 resource "azurerm_network_interface_application_security_group_association" "asg_association" {
-  for_each = { for vm in var.vms : vm.name => vm }
+  for_each = { for vm in var.linux_vms : vm.name => vm }
 
   network_interface_id          = azurerm_network_interface.nic[each.key].id
   application_security_group_id = each.value.asg_id != null ? each.value.asg_id : azurerm_application_security_group.asg[each.key].id
@@ -55,17 +55,17 @@ resource "azurerm_network_interface_application_security_group_association" "asg
 
 
 resource "random_integer" "zone" {
-  for_each = { for vm in var.vms : vm.name => vm if vm.availability_zone == "random" }
+  for_each = { for vm in var.linux_vms : vm.name => vm if vm.availability_zone == "random" }
   min      = 1
   max      = 3
 }
 
 locals {
-  random_zones = { for idx, vm in var.vms : vm.name => vm.availability_zone == "random" ? tostring(idx + 1) : vm.availability_zone }
+  random_zones = { for idx, vm in var.linux_vms : vm.name => vm.availability_zone == "random" ? tostring(idx + 1) : vm.availability_zone }
 }
 
 resource "azurerm_linux_virtual_machine" "this" {
-  for_each = { for vm in var.vms : vm.name => vm }
+  for_each = { for vm in var.linux_vms : vm.name => vm }
 
   // Forces acceptance of marketplace terms before creating a VM
   depends_on = [
@@ -262,18 +262,18 @@ resource "azurerm_linux_virtual_machine" "this" {
 
 module "os_calculator" {
   source       = "cyber-scot/linux-virtual-machine-os-sku-calculator/azurerm"
-  for_each     = { for vm in var.vms : vm.name => vm if try(vm.use_simple_image, null) == true }
+  for_each     = { for vm in var.linux_vms : vm.name => vm if try(vm.use_simple_image, null) == true }
   vm_os_simple = each.value.vm_os_simple
 }
 
 module "os_calculator_with_plan" {
   source       = "cyber-scot/linux-virtual-machine-os-sku-with-plan-calculator/azurerm"
-  for_each     = { for vm in var.vms : vm.name => vm if try(vm.use_simple_image_with_plan, null) == true }
+  for_each     = { for vm in var.linux_vms : vm.name => vm if try(vm.use_simple_image_with_plan, null) == true }
   vm_os_simple = each.value.vm_os_simple
 }
 
 resource "azurerm_marketplace_agreement" "plan_acceptance_simple" {
-  for_each = { for vm in var.vms : vm.name => vm if try(vm.use_simple_image_with_plan, null) == true && try(vm.accept_plan, null) == true && try(vm.use_custom_image, null) == false }
+  for_each = { for vm in var.linux_vms : vm.name => vm if try(vm.use_simple_image_with_plan, null) == true && try(vm.accept_plan, null) == true && try(vm.use_custom_image, null) == false }
 
   publisher = coalesce(each.value.vm_os_publisher, module.os_calculator_with_plan[each.key].calculated_value_os_publisher)
   offer     = coalesce(each.value.vm_os_offer, module.os_calculator_with_plan[each.key].calculated_value_os_offer)
@@ -281,7 +281,7 @@ resource "azurerm_marketplace_agreement" "plan_acceptance_simple" {
 }
 
 resource "azurerm_marketplace_agreement" "plan_acceptance_custom" {
-  for_each = { for vm in var.vms : vm.name => vm if try(vm.use_custom_image_with_plan, null) == true && try(vm.accept_plan, null) == true && try(vm.use_custom_image, null) == true }
+  for_each = { for vm in var.linux_vms : vm.name => vm if try(vm.use_custom_image_with_plan, null) == true && try(vm.accept_plan, null) == true && try(vm.use_custom_image, null) == true }
 
   publisher = lookup(each.value.plan, "publisher", null)
   offer     = lookup(each.value.plan, "product", null)
@@ -289,7 +289,7 @@ resource "azurerm_marketplace_agreement" "plan_acceptance_custom" {
 }
 
 resource "azurerm_virtual_machine_extension" "linux_vm_inline_command" {
-  for_each   = { for vm in var.vms : vm.name => vm if try(vm.run_vm_command.inline, null) != null }
+  for_each   = { for vm in var.linux_vms : vm.name => vm if try(vm.run_vm_command.inline, null) != null }
   depends_on = [azurerm_linux_virtual_machine.this]
 
   name                       = each.value.run_vm_command.extension_name != null ? each.value.run_vm_command.extension_name : "run-command-${each.value.name}"
@@ -311,7 +311,7 @@ resource "azurerm_virtual_machine_extension" "linux_vm_inline_command" {
 }
 
 resource "azurerm_virtual_machine_extension" "linux_vm_file_command" {
-  for_each   = { for vm in var.vms : vm.name => vm if try(vm.run_vm_command.script_file, null) != null }
+  for_each   = { for vm in var.linux_vms : vm.name => vm if try(vm.run_vm_command.script_file, null) != null }
   depends_on = [azurerm_linux_virtual_machine.this]
 
   name                       = each.value.run_vm_command.extension_name != null ? each.value.run_vm_command.extension_name : "run-command-file-${each.value.name}"
@@ -333,7 +333,7 @@ resource "azurerm_virtual_machine_extension" "linux_vm_file_command" {
 }
 
 resource "azurerm_virtual_machine_extension" "linux_vm_uri_command" {
-  for_each   = { for vm in var.vms : vm.name => vm if try(vm.run_vm_command.script_uri, null) != null }
+  for_each   = { for vm in var.linux_vms : vm.name => vm if try(vm.run_vm_command.script_uri, null) != null }
   depends_on = [azurerm_linux_virtual_machine.this]
 
   name                       = each.value.run_vm_command.extension_name != null ? each.value.run_vm_command.extension_name : "run-command-uri-${each.value.name}"
