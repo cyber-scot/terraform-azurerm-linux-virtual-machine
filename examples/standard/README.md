@@ -84,7 +84,7 @@ data "azurerm_ssh_public_key" "ssh" {
 module "linux-vm" {
   source = "cyber-scot/linux-virtual-machine/azurerm"
 
-  vms = [
+  linux_vms = [
     {
       rg_name        = module.rg.rg_name
       location       = module.rg.rg_location
