@@ -103,6 +103,29 @@ resource "azurerm_linux_virtual_machine" "this" {
   allow_extension_operations = each.value.allow_extension_operations
   provision_vm_agent         = each.value.provision_vm_agent
 
+      dynamic "identity" {
+      for_each = each.value.identity_type == "SystemAssigned" ? [each.value.identity_type] : []
+      content {
+        type = each.value.identity_type
+      }
+    }
+
+    dynamic "identity" {
+      for_each = each.value.identity_type == "SystemAssigned, UserAssigned" ? [each.value.identity_type] : []
+      content {
+        type         = each.value.identity_type
+        identity_ids = try(each.value.identity_ids, [])
+      }
+    }
+
+    dynamic "identity" {
+      for_each = each.value.identity_type == "UserAssigned" ? [each.value.identity_type] : []
+      content {
+        type         = each.value.identity_type
+        identity_ids = length(try(each.value.identity_ids, [])) > 0 ? each.value.identity_ids : []
+      }
+    }
+
   dynamic "additional_capabilities" {
     for_each = each.value.ultra_ssd_enabled ? [1] : []
     content {
@@ -189,29 +212,6 @@ resource "azurerm_linux_virtual_machine" "this" {
     secure_vm_disk_encryption_set_id = each.value.os_disk.secure_vm_disk_encryption_set_id
     security_encryption_type         = each.value.os_disk.security_encryption_type
     write_accelerator_enabled        = each.value.os_disk.write_accelerator_enabled
-
-    dynamic "identity" {
-      for_each = each.value.identity_type == "SystemAssigned" ? [each.value.identity_type] : []
-      content {
-        type = each.value.identity_type
-      }
-    }
-
-    dynamic "identity" {
-      for_each = each.value.identity_type == "SystemAssigned, UserAssigned" ? [each.value.identity_type] : []
-      content {
-        type         = each.value.identity_type
-        identity_ids = try(each.value.identity_ids, [])
-      }
-    }
-
-    dynamic "identity" {
-      for_each = each.value.identity_type == "UserAssigned" ? [each.value.identity_type] : []
-      content {
-        type         = each.value.identity_type
-        identity_ids = length(try(each.value.identity_ids, [])) > 0 ? each.value.identity_ids : []
-      }
-    }
 
     dynamic "diff_disk_settings" {
       for_each = each.value.os_disk.diff_disk_settings != null ? [each.value.os_disk.diff_disk_settings] : []
@@ -395,7 +395,7 @@ No requirements.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_linux_vms"></a> [linux\_vms](#input\_linux\_vms) | List of VM configurations. | <pre>list(object({<br>    accept_plan = optional(bool, false)<br>    additional_unattend_content = optional(list(object({<br>      content = string<br>      setting = string<br>    })))<br>    admin_password                       = string<br>    admin_username                       = string<br>    allocation_method                    = optional(string, "Static")<br>    allow_extension_operations           = optional(bool, true)<br>    asg_id                               = optional(string, null)<br>    asg_name                             = optional(string, null)<br>    availability_set_id                  = optional(string)<br>    availability_zone                    = optional(string, "random")<br>    boot_diagnostics_storage_account_uri = optional(string, null)<br>    secrets = optional(list(object({<br>      key_vault_id = string<br>      certificates = list(object({<br>        store = string<br>        url   = string<br>      }))<br>    })))<br>    computer_name                 = optional(string)<br>    create_asg                    = optional(bool, true)<br>    custom_data                   = optional(string)<br>    custom_source_image_id        = optional(string, null)<br>    enable_accelerated_networking = optional(bool, false)<br>    enable_automatic_updates      = optional(bool, true)<br>    enable_encryption_at_host     = optional(bool, false)<br>    identity_ids                  = optional(list(string))<br>    identity_type                 = optional(string)<br>    license_type                  = optional(string)<br>    location                      = string<br>    name                          = string<br>    nic_ipconfig_name             = optional(string)<br>    nic_name                      = optional(string, null)<br>    os_disk = object({<br>      caching      = optional(string, "ReadWrite")<br>      os_disk_type = optional(string, "StandardSSD_LRS")<br>      diff_disk_settings = optional(object({<br>        option = string<br>      }))<br>      disk_encryption_set_id           = optional(string, null)<br>      disk_size_gb                     = optional(number, "127")<br>      name                             = optional(string, null)<br>      secure_vm_disk_encryption_set_id = optional(string, null)<br>      security_encryption_type         = optional(string, null)<br>      write_accelerator_enabled        = optional(bool, false)<br>    })<br>    patch_mode                    = optional(string, "AutomaticByOS")<br>    pip_custom_dns_label          = optional(string)<br>    pip_name                      = optional(string)<br>    provision_vm_agent            = optional(bool, true)<br>    public_ip_sku                 = optional(string, null)<br>    rg_name                       = string<br>    source_image_reference        = optional(map(string))<br>    spot_instance                 = optional(bool, false)<br>    spot_instance_eviction_policy = optional(string)<br>    spot_instance_max_bid_price   = optional(string)<br>    static_private_ip             = optional(string)<br>    subnet_id                     = string<br>    termination_notification = optional(object({<br>      enabled = bool<br>      timeout = optional(string)<br>    }))<br>    tags = map(string)<br>    run_vm_command = optional(object({<br>      extension_name = optional(string)<br>      inline         = optional(string)<br>      script_file    = optional(string)<br>      script_uri     = optional(string)<br>    }))<br>    timezone                     = optional(string)<br>    ultra_ssd_enabled            = optional(bool, false)<br>    use_custom_image             = optional(bool, false)<br>    use_custom_image_with_plan   = optional(bool, false)<br>    use_simple_image             = optional(bool, true)<br>    use_simple_image_with_plan   = optional(bool, false)<br>    user_data                    = optional(string, null)<br>    virtual_machine_scale_set_id = optional(string, null)<br>    vm_os_id                     = optional(string, "")<br>    vm_os_offer                  = optional(string)<br>    vm_os_publisher              = optional(string)<br>    vm_os_simple                 = optional(string)<br>    vm_os_sku                    = optional(string)<br>    vm_os_version                = optional(string)<br>    vm_size                      = string<br>    vtpm_enabled                 = optional(bool, false)<br>    winrm_listener = optional(list(object({<br>      protocol        = string<br>      certificate_url = optional(string)<br>    })))<br>  }))</pre> | `[]` | no |
+| <a name="input_vms"></a> [vms](#input\_vms) | List of VM configurations. | <pre>list(object({<br>    accept_plan    = optional(bool, false)<br>    admin_password = string<br>    admin_username = string<br>    admin_ssh_key = optional(list(object({<br>      username   = optional(string)<br>      public_key = optional(string)<br>    })))<br>    allocation_method                    = optional(string, "Static")<br>    allow_extension_operations           = optional(bool, true)<br>    asg_id                               = optional(string, null)<br>    asg_name                             = optional(string, null)<br>    availability_set_id                  = optional(string)<br>    availability_zone                    = optional(string, "random")<br>    boot_diagnostics_storage_account_uri = optional(string, null)<br>    secrets = optional(list(object({<br>      key_vault_id = string<br>      certificates = list(object({<br>        url = string<br>      }))<br>    })))<br>    computer_name                   = optional(string)<br>    create_asg                      = optional(bool, true)<br>    custom_data                     = optional(string)<br>    custom_source_image_id          = optional(string, null)<br>    dedicated_host_group_id         = optional(string, null)<br>    disable_password_authentication = optional(bool, true)<br>    edge_zone                       = optional(string, null)<br>    platform_fault_domain           = optional(string, "-1")<br>    patch_mode                      = optional(string, "ImageDefault")<br>    enable_accelerated_networking   = optional(bool, false)<br>    enable_encryption_at_host       = optional(bool, false)<br>    secure_boot_enabled             = optional(bool, true)<br>    reboot_setting                  = optional(string, "Always")<br>    patch_assessment_mode           = optional(string, "ImageDefault")<br>    gallery_application = optional(list(object({<br>      version_id             = optional(string)<br>      configuration_blob_uri = optional(string)<br>      order                  = optional(string)<br>      tag                    = optional(string)<br>    })))<br>    identity_ids      = optional(list(string))<br>    identity_type     = optional(string)<br>    license_type      = optional(string)<br>    location          = string<br>    name              = string<br>    nic_ipconfig_name = optional(string)<br>    nic_name          = optional(string, null)<br>    os_disk = object({<br>      caching      = optional(string, "ReadWrite")<br>      os_disk_type = optional(string, "StandardSSD_LRS")<br>      diff_disk_settings = optional(object({<br>        option = string<br>      }))<br>      disk_encryption_set_id           = optional(string, null)<br>      disk_size_gb                     = optional(number, "127")<br>      name                             = optional(string, null)<br>      secure_vm_disk_encryption_set_id = optional(string, null)<br>      security_encryption_type         = optional(string, null)<br>      write_accelerator_enabled        = optional(bool, false)<br>    })<br>    pip_custom_dns_label          = optional(string)<br>    pip_name                      = optional(string)<br>    provision_vm_agent            = optional(bool, true)<br>    public_ip_sku                 = optional(string, null)<br>    rg_name                       = string<br>    source_image_reference        = optional(map(string))<br>    spot_instance                 = optional(bool, false)<br>    spot_instance_eviction_policy = optional(string)<br>    spot_instance_max_bid_price   = optional(string)<br>    static_private_ip             = optional(string)<br>    subnet_id                     = string<br>    termination_notification = optional(object({<br>      enabled = bool<br>      timeout = optional(string)<br>    }))<br>    tags = map(string)<br>    run_vm_command = optional(object({<br>      extension_name = optional(string)<br>      inline         = optional(string)<br>      script_file    = optional(string)<br>      script_uri     = optional(string)<br>    }))<br>    ultra_ssd_enabled            = optional(bool, false)<br>    use_custom_image             = optional(bool, false)<br>    use_custom_image_with_plan   = optional(bool, false)<br>    use_simple_image             = optional(bool, true)<br>    use_simple_image_with_plan   = optional(bool, false)<br>    user_data                    = optional(string, null)<br>    virtual_machine_scale_set_id = optional(string, null)<br>    vm_os_id                     = optional(string, "")<br>    vm_os_offer                  = optional(string)<br>    vm_os_publisher              = optional(string)<br>    vm_os_simple                 = optional(string)<br>    vm_os_sku                    = optional(string)<br>    vm_os_version                = optional(string)<br>    vm_size                      = string<br>    vtpm_enabled                 = optional(bool, false)<br>  }))</pre> | `[]` | no |
 
 ## Outputs
 

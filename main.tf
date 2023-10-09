@@ -101,28 +101,28 @@ resource "azurerm_linux_virtual_machine" "this" {
   allow_extension_operations = each.value.allow_extension_operations
   provision_vm_agent         = each.value.provision_vm_agent
 
-      dynamic "identity" {
-      for_each = each.value.identity_type == "SystemAssigned" ? [each.value.identity_type] : []
-      content {
-        type = each.value.identity_type
-      }
+  dynamic "identity" {
+    for_each = each.value.identity_type == "SystemAssigned" ? [each.value.identity_type] : []
+    content {
+      type = each.value.identity_type
     }
+  }
 
-    dynamic "identity" {
-      for_each = each.value.identity_type == "SystemAssigned, UserAssigned" ? [each.value.identity_type] : []
-      content {
-        type         = each.value.identity_type
-        identity_ids = try(each.value.identity_ids, [])
-      }
+  dynamic "identity" {
+    for_each = each.value.identity_type == "SystemAssigned, UserAssigned" ? [each.value.identity_type] : []
+    content {
+      type         = each.value.identity_type
+      identity_ids = try(each.value.identity_ids, [])
     }
+  }
 
-    dynamic "identity" {
-      for_each = each.value.identity_type == "UserAssigned" ? [each.value.identity_type] : []
-      content {
-        type         = each.value.identity_type
-        identity_ids = length(try(each.value.identity_ids, [])) > 0 ? each.value.identity_ids : []
-      }
+  dynamic "identity" {
+    for_each = each.value.identity_type == "UserAssigned" ? [each.value.identity_type] : []
+    content {
+      type         = each.value.identity_type
+      identity_ids = length(try(each.value.identity_ids, [])) > 0 ? each.value.identity_ids : []
     }
+  }
 
   dynamic "additional_capabilities" {
     for_each = each.value.ultra_ssd_enabled ? [1] : []
